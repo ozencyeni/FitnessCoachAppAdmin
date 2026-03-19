@@ -47,7 +47,19 @@ export default async function DashboardLayout({
             href="/dashboard/coaches"
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800 hover:text-white transition text-sm font-medium"
           >
-            <span>🧑‍🏫</span> Antrenör Başvuruları
+            <span>⏳</span> Antrenör Başvuruları
+          </a>
+          <a
+            href="/dashboard/all-coaches"
+            className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800 hover:text-white transition text-sm font-medium"
+          >
+            <span>🧑‍🏫</span> Antrenörler
+          </a>
+          <a
+            href="/dashboard/students"
+            className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800 hover:text-white transition text-sm font-medium"
+          >
+            <span>🏃</span> Sporcular
           </a>
         </nav>
 

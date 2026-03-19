@@ -1,0 +1,38 @@
+'use server'
+
+import { createAdminClient } from '@/utils/supabase/admin'
+import { revalidatePath } from 'next/cache'
+
+export async function banUser(userId: string) {
+  const supabase = createAdminClient()
+
+  const { error } = await supabase.auth.admin.updateUserById(userId, {
+    ban_duration: '87600h', // ~10 yıl = kalıcı ban
+  })
+
+  if (error) throw new Error(error.message)
+
+  revalidatePath('/dashboard/students')
+}
+
+export async function unbanUser(userId: string) {
+  const supabase = createAdminClient()
+
+  const { error } = await supabase.auth.admin.updateUserById(userId, {
+    ban_duration: 'none',
+  })
+
+  if (error) throw new Error(error.message)
+
+  revalidatePath('/dashboard/students')
+}
+
+export async function deleteUser(userId: string) {
+  const supabase = createAdminClient()
+
+  const { error } = await supabase.auth.admin.deleteUser(userId)
+
+  if (error) throw new Error(error.message)
+
+  revalidatePath('/dashboard/students')
+}

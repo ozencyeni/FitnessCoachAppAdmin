@@ -28,8 +28,15 @@ export async function unbanCoach(userId: string) {
 }
 
 export async function deleteCoach(userId: string) {
-  const supabase = createAdminClient()
+  const { createClient } = await import('@/utils/supabase/server')
+  const serverClient = await createClient()
+  const { data: { user: me } } = await serverClient.auth.getUser()
 
+  if (me?.id === userId) {
+    throw new Error('Kendi hesabınızı silemezsiniz.')
+  }
+
+  const supabase = createAdminClient()
   const { error } = await supabase.auth.admin.deleteUser(userId)
 
   if (error) throw new Error(error.message)

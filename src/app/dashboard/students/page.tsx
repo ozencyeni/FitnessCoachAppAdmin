@@ -1,12 +1,13 @@
 import { createAdminClient } from '@/utils/supabase/admin'
 import UserActions from './UserActions'
+import VerifyButton from './VerifyButton'
 
 export default async function StudentsPage() {
   const supabase = createAdminClient()
 
   const { data: students } = await supabase
     .from('profiles')
-    .select('id, full_name, avatar_url, phone, created_at')
+    .select('id, full_name, avatar_url, phone, created_at, is_verified, deletion_requested_at')
     .eq('role', 'student')
     .order('created_at', { ascending: false })
 
@@ -21,12 +22,17 @@ export default async function StudentsPage() {
   const emailMap = new Map(authUsers.map((u) => [u.id, u.email]))
 
   const list = students ?? []
+  const verifiedCount = list.filter((s) => s.is_verified).length
 
   return (
     <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white">Sporcular</h1>
-        <p className="text-gray-400 mt-1">{list.length} sporcu kayıtlı</p>
+      <div className="mb-8 flex items-end justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-white">Sporcular</h1>
+          <p className="text-gray-400 mt-1">
+            {list.length} sporcu kayıtlı · {verifiedCount} onaylı
+          </p>
+        </div>
       </div>
 
       {list.length === 0 ? (
@@ -50,8 +56,9 @@ export default async function StudentsPage() {
             <tbody className="divide-y divide-gray-800">
               {list.map((student) => {
                 const isBanned = bannedIds.has(student.id)
+                const pendingDeletion = !!student.deletion_requested_at
                 return (
-                  <tr key={student.id} className="hover:bg-gray-800/50 transition">
+                  <tr key={student.id} className={`hover:bg-gray-800/50 transition ${pendingDeletion ? 'opacity-60' : ''}`}>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center text-lg overflow-hidden flex-shrink-0">
@@ -61,7 +68,12 @@ export default async function StudentsPage() {
                           ) : '👤'}
                         </div>
                         <div>
-                          <p className="text-white font-medium text-sm">{student.full_name ?? '—'}</p>
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-white font-medium text-sm">{student.full_name ?? '—'}</p>
+                            {student.is_verified && (
+                              <span title="Onaylı Sporcu" className="text-purple-400 text-xs">✦</span>
+                            )}
+                          </div>
                           <p className="text-gray-500 text-xs font-mono">{student.id.slice(0, 8)}…</p>
                         </div>
                       </div>
@@ -78,18 +90,34 @@ export default async function StudentsPage() {
                       </p>
                     </td>
                     <td className="px-6 py-4">
-                      {isBanned ? (
-                        <span className="text-xs px-2 py-1 rounded-full bg-red-900/40 text-red-300 border border-red-700">
-                          🚫 Banlı
-                        </span>
-                      ) : (
-                        <span className="text-xs px-2 py-1 rounded-full bg-green-900/40 text-green-300 border border-green-700">
-                          ✓ Aktif
-                        </span>
-                      )}
+                      <div className="flex flex-col gap-1">
+                        {isBanned ? (
+                          <span className="text-xs px-2 py-1 rounded-full bg-red-900/40 text-red-300 border border-red-700 w-fit">
+                            🚫 Banlı
+                          </span>
+                        ) : (
+                          <span className="text-xs px-2 py-1 rounded-full bg-green-900/40 text-green-300 border border-green-700 w-fit">
+                            ✓ Aktif
+                          </span>
+                        )}
+                        {student.is_verified && (
+                          <span className="text-xs px-2 py-1 rounded-full bg-purple-900/40 text-purple-300 border border-purple-700 w-fit">
+                            ✦ Onaylı
+                          </span>
+                        )}
+                        {pendingDeletion && (
+                          <span
+                            title={`Silinecek: ${new Date(new Date(student.deletion_requested_at!).getTime() + 24 * 60 * 60 * 1000).toLocaleString('tr-TR')}`}
+                            className="text-xs px-2 py-1 rounded-full bg-orange-900/40 text-orange-300 border border-orange-700 w-fit cursor-help"
+                          >
+                            ⏳ Silinecek
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex justify-end">
+                      <div className="flex justify-end gap-2 flex-wrap">
+                        <VerifyButton userId={student.id} isVerified={student.is_verified} />
                         <UserActions userId={student.id} isBanned={isBanned} />
                       </div>
                     </td>

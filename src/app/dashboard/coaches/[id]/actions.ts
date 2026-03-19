@@ -19,7 +19,6 @@ export async function approveCoach(coachId: string) {
 
   if (error) throw new Error(error.message)
 
-  // Antrenöre bildirim gönder
   await supabase.from('notifications').insert({
     user_id: coachId,
     type: 'system',
@@ -46,7 +45,6 @@ export async function rejectCoach(coachId: string, reason: string) {
 
   if (error) throw new Error(error.message)
 
-  // Antrenöre bildirim gönder
   await supabase.from('notifications').insert({
     user_id: coachId,
     type: 'system',

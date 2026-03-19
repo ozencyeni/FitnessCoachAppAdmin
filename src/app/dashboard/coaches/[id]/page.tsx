@@ -1,12 +1,14 @@
 import { notFound } from 'next/navigation'
 import { createAdminClient } from '@/utils/supabase/admin'
 import ApproveRejectButtons from './ApproveRejectButtons'
+import CertificateGrid from './CertificateGrid'
 
 export default async function CoachDetailPage({
   params,
 }: {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }) {
+  const { id } = await params
   const supabase = createAdminClient()
 
   const [{ data: coachProfile }, { data: certificates }] = await Promise.all([
@@ -16,12 +18,12 @@ export default async function CoachDetailPage({
         *,
         profiles!inner(full_name, avatar_url, phone, gender, created_at)
       `)
-      .eq('user_id', params.id)
+      .eq('user_id', id)
       .single(),
     supabase
       .from('coach_certificates')
-      .select('*')
-      .eq('coach_id', params.id)
+      .select('id, file_url, file_name, certificate_type')
+      .eq('coach_id', id)
       .order('created_at', { ascending: true }),
   ])
 
@@ -29,13 +31,13 @@ export default async function CoachDetailPage({
 
   const profile = Array.isArray(coachProfile.profiles)
     ? coachProfile.profiles[0]
-    : coachProfile.profiles as {
+    : (coachProfile.profiles as {
         full_name: string
         avatar_url: string | null
         phone: string | null
         gender: string | null
         created_at: string
-      }
+      })
 
   const sessionTypeLabel: Record<string, string> = {
     in_person: 'Yüz yüze',
@@ -45,7 +47,6 @@ export default async function CoachDetailPage({
 
   return (
     <div className="p-8 max-w-4xl mx-auto">
-      {/* Geri */}
       <a
         href="/dashboard/coaches"
         className="inline-flex items-center gap-2 text-gray-400 hover:text-white text-sm mb-6 transition"
@@ -77,14 +78,9 @@ export default async function CoachDetailPage({
           </div>
         </div>
 
-        {/* Detaylar */}
         <div className="grid grid-cols-2 gap-4">
-          {coachProfile.city && (
-            <InfoRow label="Şehir" value={coachProfile.city} />
-          )}
-          {coachProfile.district && (
-            <InfoRow label="İlçe" value={coachProfile.district} />
-          )}
+          {coachProfile.city && <InfoRow label="Şehir" value={coachProfile.city} />}
+          {coachProfile.district && <InfoRow label="İlçe" value={coachProfile.district} />}
           {coachProfile.experience_years && (
             <InfoRow label="Deneyim" value={`${coachProfile.experience_years} yıl`} />
           )}
@@ -104,11 +100,8 @@ export default async function CoachDetailPage({
           <div className="mt-4">
             <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Uzmanlıklar</p>
             <div className="flex flex-wrap gap-2">
-              {coachProfile.specializations.map((s: string) => (
-                <span
-                  key={s}
-                  className="text-sm px-3 py-1 rounded-lg bg-secondary/20 text-secondary border border-secondary/30"
-                >
+              {(coachProfile.specializations as string[]).map((s) => (
+                <span key={s} className="text-sm px-3 py-1 rounded-lg bg-secondary/20 text-secondary border border-secondary/30">
                   {s}
                 </span>
               ))}
@@ -136,65 +129,22 @@ export default async function CoachDetailPage({
         <h2 className="text-lg font-semibold text-white mb-4">
           Yüklenen Sertifikalar ({certificates?.length ?? 0})
         </h2>
-
-        {!certificates || certificates.length === 0 ? (
-          <div className="text-center py-10">
-            <p className="text-4xl mb-3">📂</p>
-            <p className="text-gray-400">Sertifika yüklenmemiş</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {certificates.map((cert) => (
-              <a
-                key={cert.id}
-                href={cert.file_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group block rounded-xl overflow-hidden border border-gray-700 hover:border-secondary transition"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={cert.file_url}
-                  alt={cert.file_name}
-                  className="w-full h-48 object-cover bg-gray-800 group-hover:opacity-90 transition"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement
-                    target.style.display = 'none'
-                    target.parentElement!.innerHTML += `
-                      <div class="w-full h-48 bg-gray-800 flex flex-col items-center justify-center gap-2">
-                        <span class="text-3xl">📄</span>
-                        <span class="text-xs text-gray-400">${cert.file_name}</span>
-                      </div>`
-                  }}
-                />
-                <div className="p-3">
-                  <p className="text-sm text-white truncate">{cert.file_name}</p>
-                  {cert.certificate_type && (
-                    <p className="text-xs text-gray-400 mt-0.5">{cert.certificate_type}</p>
-                  )}
-                  <p className="text-xs text-secondary mt-1">Büyütmek için tıkla ↗</p>
-                </div>
-              </a>
-            ))}
-          </div>
-        )}
+        <CertificateGrid certificates={certificates ?? []} />
       </div>
 
       {/* Onayla / Reddet */}
       {coachProfile.status === 'pending' && (
-        <ApproveRejectButtons coachId={params.id} />
+        <ApproveRejectButtons coachId={id} />
       )}
-
       {coachProfile.status === 'active' && (
         <div className="bg-green-900/20 border border-green-700 rounded-2xl p-6 text-center">
           <p className="text-green-400 font-semibold">✅ Bu antrenör onaylandı ve aktif.</p>
         </div>
       )}
-
       {coachProfile.status === 'rejected' && (
         <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
           <p className="text-gray-400 text-center mb-4">Bu başvuru reddedildi. Yeniden onaylayabilirsin.</p>
-          <ApproveRejectButtons coachId={params.id} />
+          <ApproveRejectButtons coachId={id} />
         </div>
       )}
     </div>

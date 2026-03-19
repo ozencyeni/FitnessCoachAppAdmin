@@ -44,16 +44,17 @@ export default function LoginPage() {
       return
     }
 
-    // Admin kontrolü
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', data.user.id)
-      .single()
+    // Admin kontrolü — server-side API ile (RLS bypass)
+    const checkRes = await fetch('/api/check-admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accessToken: data.session?.access_token }),
+    })
+    const checkData = await checkRes.json()
 
-    if (profile?.role !== 'admin') {
+    if (!checkData.isAdmin) {
       await supabase.auth.signOut()
-      setError('Bu hesabın admin yetkisi yok.')
+      setError(`Admin yetkisi yok. (role: ${checkData.role ?? 'bulunamadı'})`)
       setLoading(false)
       return
     }

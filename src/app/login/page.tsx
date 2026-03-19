@@ -54,7 +54,7 @@ export default function LoginPage() {
 
     if (!checkData.isAdmin) {
       await supabase.auth.signOut()
-      setError(`Admin yetkisi yok. (role: ${checkData.role ?? 'bulunamadı'})`)
+      setError(`Hata: role=${checkData.role ?? '?'} | userId=${checkData.userId ?? '?'} | err=${checkData.error ?? '-'}`)
       setLoading(false)
       return
     }

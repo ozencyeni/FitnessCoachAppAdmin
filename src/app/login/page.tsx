@@ -16,11 +16,27 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
 
+    // Env var kontrolü
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+      setError('Supabase bağlantısı yapılandırılmamış. Vercel env vars eksik.')
+      setLoading(false)
+      return
+    }
+
     const supabase = createClient()
+
+    // 10 saniye timeout
+    const timeout = setTimeout(() => {
+      setError('Bağlantı zaman aşımı. Vercel env vars kontrol et.')
+      setLoading(false)
+    }, 10000)
+
     const { data, error: authError } = await supabase.auth.signInWithPassword({
       email,
       password,
     })
+
+    clearTimeout(timeout)
 
     if (authError || !data.user) {
       setError('E-posta veya şifre hatalı.')

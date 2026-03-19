@@ -66,8 +66,44 @@ export async function deleteUser(userId: string) {
   }
 
   const supabase = createAdminClient()
-  const { error } = await supabase.auth.admin.deleteUser(userId)
 
+  // FK kısıtlamaları CASCADE olmayabilir — manuel sırayla temizle
+  // 1. Konuşma mesajları
+  const { data: convs } = await supabase
+    .from('conversations')
+    .select('id')
+    .or(`coach_id.eq.${userId},student_id.eq.${userId}`)
+  if (convs?.length) {
+    await supabase.from('messages').delete()
+      .in('conversation_id', convs.map((c) => c.id))
+  }
+
+  // 2. Konuşmalar
+  await supabase.from('conversations').delete()
+    .or(`coach_id.eq.${userId},student_id.eq.${userId}`)
+
+  // 3. Rezervasyon değişiklik talepleri
+  await supabase.from('reservation_change_requests').delete()
+    .eq('student_id', userId)
+
+  // 4. Rezervasyonlar
+  await supabase.from('reservations').delete()
+    .or(`student_id.eq.${userId},coach_id.eq.${userId}`)
+
+  // 5. Değerlendirmeler
+  await supabase.from('ratings').delete()
+    .or(`student_id.eq.${userId},coach_id.eq.${userId}`)
+
+  // 6. İşlemler
+  await supabase.from('transactions').delete()
+    .or(`student_id.eq.${userId},coach_id.eq.${userId}`)
+
+  // 7. Sporcu paketleri
+  await supabase.from('student_packages').delete()
+    .or(`student_id.eq.${userId},coach_id.eq.${userId}`)
+
+  // 8. Auth kullanıcısını sil (profiles ve cascade olanlar otomatik silinir)
+  const { error } = await supabase.auth.admin.deleteUser(userId)
   if (error) throw new Error(error.message)
 
   revalidatePath('/dashboard/students')

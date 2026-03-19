@@ -37,8 +37,36 @@ export async function deleteCoach(userId: string) {
   }
 
   const supabase = createAdminClient()
-  const { error } = await supabase.auth.admin.deleteUser(userId)
 
+  // FK kısıtlamaları CASCADE olmayabilir — manuel sırayla temizle
+  const { data: convs } = await supabase
+    .from('conversations')
+    .select('id')
+    .or(`coach_id.eq.${userId},student_id.eq.${userId}`)
+  if (convs?.length) {
+    await supabase.from('messages').delete()
+      .in('conversation_id', convs.map((c) => c.id))
+  }
+
+  await supabase.from('conversations').delete()
+    .or(`coach_id.eq.${userId},student_id.eq.${userId}`)
+
+  await supabase.from('reservation_change_requests').delete()
+    .eq('student_id', userId)
+
+  await supabase.from('reservations').delete()
+    .or(`student_id.eq.${userId},coach_id.eq.${userId}`)
+
+  await supabase.from('ratings').delete()
+    .or(`student_id.eq.${userId},coach_id.eq.${userId}`)
+
+  await supabase.from('transactions').delete()
+    .or(`student_id.eq.${userId},coach_id.eq.${userId}`)
+
+  await supabase.from('student_packages').delete()
+    .or(`student_id.eq.${userId},coach_id.eq.${userId}`)
+
+  const { error } = await supabase.auth.admin.deleteUser(userId)
   if (error) throw new Error(error.message)
 
   revalidatePath('/dashboard/all-coaches')
